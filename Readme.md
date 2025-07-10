@@ -2,8 +2,8 @@
 
 This project is a **proof-of-concept (POC)** microservices setup using **Spring Boot**, featuring two independent services:
 
-- `employee-management-service`: Handles employee operations and notifies on changes.
-- `notification-service`: Receives and logs notifications via HTTP.
+- `employee-management-service`: Handles employee operations, stores employees in a JSON file, and notifies on changes.
+- `notification-service`: Receives, logs, and stores notifications in a JSON file via HTTP.
 
 These services are designed to be **containerized with Docker** and **deployed to AWS ECS Fargate** without a load balancer (public IPs are used for inter-service communication).
 
@@ -24,7 +24,6 @@ employee-notification-poc/
 └── README.md
 ```
 
-
 ---
 
 ## 🧰 Technologies Used
@@ -34,7 +33,7 @@ employee-notification-poc/
 - Maven
 - Docker
 - AWS ECS Fargate
-- H2 in-memory database (for demo only)
+- **No database**: All data is stored in JSON files
 
 ---
 
@@ -42,8 +41,9 @@ employee-notification-poc/
 
 ### ➕ Responsibilities
 
-- Create, read, and delete employee records
-- Notify `notification-service` via HTTP POST when an employee is created
+- Create, read, update, and delete employee records
+- Store employees in a local `employees.json` file
+- Notify `notification-service` via HTTP POST when an employee is created, updated, or deleted
 
 ### 📦 REST Endpoints
 
@@ -52,25 +52,32 @@ employee-notification-poc/
 | POST   | `/api/employees`       | Create a new employee   |
 | GET    | `/api/employees`       | Get all employees       |
 | GET    | `/api/employees/{id}`  | Get employee by ID      |
+| PUT    | `/api/employees/{id}`  | Update employee by ID   |
 | DELETE | `/api/employees/{id}`  | Delete employee by ID   |
 
 ### 🔔 Notification Call
 
-When an employee is created, this service makes an HTTP POST call to:
+When an employee is created, updated, or deleted, this service makes an HTTP POST call to:
 
 ```
-http://\${NOTIFICATION_URL}/api/notifications
+http://${NOTIFICATION_URL}/api/notifications
 ```
 
 Payload:
 ```json
 {
-  "message": "Employee Created",
+  "message": "Employee Created|Employee Updated|Employee Deleted",
   "employeeId": 1
 }
 ```
 
 The `NOTIFICATION_URL` must be provided via an **environment variable**.
+
+### 🗃 Storage
+- Employees are stored in a local `employees.json` file (no database is used).
+
+### 📝 Logging
+- All actions and errors are logged using SLF4J (console output by default).
 
 ---
 
@@ -78,24 +85,39 @@ The `NOTIFICATION_URL` must be provided via an **environment variable**.
 
 ### ➕ Responsibilities
 
-* Accept and log incoming notifications
+* Accept, log, and store incoming notifications
+* Expose a GET endpoint to retrieve all notifications
 
 ### 📦 REST Endpoints
 
-| Method | Endpoint             | Description           |
-| ------ | -------------------- | --------------------- |
-| POST   | `/api/notifications` | Accept a notification |
+| Method | Endpoint             | Description                    |
+| ------ | -------------------- | ------------------------------ |
+| POST   | `/api/notifications` | Accept and store a notification|
+| GET    | `/api/notifications` | Get all stored notifications   |
 
-### 📄 Request Format
+### 📄 Request Format (POST)
 
 ```json
 {
-  "message": "Employee Created",
+  "message": "Employee Created|Employee Updated|Employee Deleted",
   "employeeId": 1
 }
 ```
 
-This service simply logs the notification to the console.
+### 📄 Response Format (GET)
+
+```json
+[
+  { "message": "Employee Created", "employeeId": 1 },
+  { "message": "Employee Updated", "employeeId": 1 }
+]
+```
+
+### 🗃 Storage
+- Notifications are stored in a local `notifications.json` file (no database is used).
+
+### 📝 Logging
+- All received notifications, file operations, and errors are logged using SLF4J.
 
 ---
 
@@ -116,14 +138,17 @@ ENTRYPOINT ["java", "-jar", "/app.jar"]
 ./mvnw clean package -DskipTests
 
 # Build Docker image
+# (do this in each service directory)
 docker build -t employee-management-service .
+docker build -t notification-service .
 
 # Run with environment variable
+# (run in separate terminals)
 docker run -e NOTIFICATION_URL=http://<host-ip>:8082 \
   -p 8081:8081 employee-management-service
-```
 
-Do the same for `notification-service`, changing port to `8082`.
+docker run -p 8082:8080 notification-service
+```
 
 ---
 
@@ -190,11 +215,13 @@ curl -X POST http://<EMPLOYEE_PUBLIC_IP>:8081/api/employees \
 
 3. This should trigger a notification sent to `notification-service`.
 
-4. Check CloudWatch logs for `notification-service`, you should see:
+4. To view all notifications:
 
+```bash
+curl http://<NOTIFICATION_PUBLIC_IP>:8082/api/notifications
 ```
-🔔 Notification received: Employee Created for Employee ID: 1
-```
+
+5. Check logs for both services for detailed action and error logs.
 
 ---
 
@@ -202,13 +229,14 @@ curl -X POST http://<EMPLOYEE_PUBLIC_IP>:8081/api/employees \
 
 | Component            | Description                        |
 | -------------------- | ---------------------------------- |
-| employee-service     | Spring Boot app on port 8081       |
-| notification-service | Spring Boot app on port 8082       |
+| employee-service     | Spring Boot app on port 8081, stores employees in JSON |
+| notification-service | Spring Boot app on port 8082, stores notifications in JSON |
 | Inter-service comm   | HTTP using public IPs              |
 | Dockerized           | Yes (Dockerfile in each service)   |
 | Fargate ready        | Yes (stateless, env-configurable)  |
 | Load Balancer        | ❌ Not used (public IPs only)       |
 | Infrastructure       | AWS ECS Fargate + ECR + VPC/Subnet |
+| Logging              | SLF4J logging in all services      |
 
 ---
 
