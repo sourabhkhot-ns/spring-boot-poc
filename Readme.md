@@ -140,16 +140,11 @@ git clone https://github.com/sourabhkhot-ns/spring-boot-poc.git
 # Navigate to the project directory
 cd spring-boot-poc
 
-# Package the app
-./mvnw clean package -DskipTests
-
-# Build Docker image
-# (do this in each service directory)
+# Build Docker image for each service
 docker build -t employee-management-service employee-management-service/
 docker build -t notification-service notification-service/
 
 # Run with environment variable
-# (run in separate terminals)
 docker run -e NOTIFICATION_URL=http://<host-ip>:8082 \
   -p 8081:8081 employee-management-service
 
