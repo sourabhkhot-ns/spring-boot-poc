@@ -1,0 +1,6 @@
+{
+  "java.project.sourcePaths": [
+    "employee-management-service/src/main/java",
+    "notification-service/src/main/java"
+  ]
+} 

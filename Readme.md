@@ -1,0 +1,221 @@
+# 🧪 Employee Notification Microservices POC
+
+This project is a **proof-of-concept (POC)** microservices setup using **Spring Boot**, featuring two independent services:
+
+- `employee-management-service`: Handles employee operations and notifies on changes.
+- `notification-service`: Receives and logs notifications via HTTP.
+
+These services are designed to be **containerized with Docker** and **deployed to AWS ECS Fargate** without a load balancer (public IPs are used for inter-service communication).
+
+---
+
+## 🗂 Project Structure
+
+```
+employee-notification-poc/
+├── employee-management-service/
+│   ├── Dockerfile
+│   ├── pom.xml
+│   └── src/main/java/com/example/employee/...
+├── notification-service/
+│   ├── Dockerfile
+│   ├── pom.xml
+│   └── src/main/java/com/example/notification/...
+└── README.md
+```
+
+
+---
+
+## 🧰 Technologies Used
+
+- Java 17
+- Spring Boot 3+
+- Maven
+- Docker
+- AWS ECS Fargate
+- H2 in-memory database (for demo only)
+
+---
+
+## 🧑‍💼 employee-management-service
+
+### ➕ Responsibilities
+
+- Create, read, and delete employee records
+- Notify `notification-service` via HTTP POST when an employee is created
+
+### 📦 REST Endpoints
+
+| Method | Endpoint               | Description             |
+|--------|------------------------|-------------------------|
+| POST   | `/api/employees`       | Create a new employee   |
+| GET    | `/api/employees`       | Get all employees       |
+| GET    | `/api/employees/{id}`  | Get employee by ID      |
+| DELETE | `/api/employees/{id}`  | Delete employee by ID   |
+
+### 🔔 Notification Call
+
+When an employee is created, this service makes an HTTP POST call to:
+
+```
+http://\${NOTIFICATION_URL}/api/notifications
+```
+
+Payload:
+```json
+{
+  "message": "Employee Created",
+  "employeeId": 1
+}
+```
+
+The `NOTIFICATION_URL` must be provided via an **environment variable**.
+
+---
+
+## 📢 notification-service
+
+### ➕ Responsibilities
+
+* Accept and log incoming notifications
+
+### 📦 REST Endpoints
+
+| Method | Endpoint             | Description           |
+| ------ | -------------------- | --------------------- |
+| POST   | `/api/notifications` | Accept a notification |
+
+### 📄 Request Format
+
+```json
+{
+  "message": "Employee Created",
+  "employeeId": 1
+}
+```
+
+This service simply logs the notification to the console.
+
+---
+
+## 🐳 Docker Setup
+
+### Dockerfile (common to both services)
+
+```dockerfile
+FROM openjdk:17-jdk-slim
+COPY target/*.jar app.jar
+ENTRYPOINT ["java", "-jar", "/app.jar"]
+```
+
+### Build & Run Locally
+
+```bash
+# Package the app
+./mvnw clean package -DskipTests
+
+# Build Docker image
+docker build -t employee-management-service .
+
+# Run with environment variable
+docker run -e NOTIFICATION_URL=http://<host-ip>:8082 \
+  -p 8081:8081 employee-management-service
+```
+
+Do the same for `notification-service`, changing port to `8082`.
+
+---
+
+## ☁️ Deploying to AWS ECS Fargate
+
+### 1. Create Amazon ECR Repositories
+
+```bash
+aws ecr create-repository --repository-name employee-management-service
+aws ecr create-repository --repository-name notification-service
+```
+
+### 2. Push Docker Images
+
+```bash
+# Authenticate Docker
+aws ecr get-login-password --region <region> | \
+  docker login --username AWS --password-stdin <account>.dkr.ecr.<region>.amazonaws.com
+
+# Tag and push images
+docker tag employee-management-service:latest <ACCOUNT_ID>.dkr.ecr.<region>.amazonaws.com/employee-management-service
+docker push <ACCOUNT_ID>.dkr.ecr.<region>.amazonaws.com/employee-management-service
+
+docker tag notification-service:latest <ACCOUNT_ID>.dkr.ecr.<region>.amazonaws.com/notification-service
+docker push <ACCOUNT_ID>.dkr.ecr.<region>.amazonaws.com/notification-service
+```
+
+---
+
+## 🧾 ECS Setup for Fargate
+
+### Task Definitions (One Per Service)
+
+* `networkMode`: `awsvpc`
+* `requiresCompatibilities`: `["FARGATE"]`
+* CPU: `256`, Memory: `512`
+* Port mappings: `8081` (employee), `8082` (notification)
+* Enable `assignPublicIp: ENABLED`
+* Add `NOTIFICATION_URL` as environment variable in employee task
+
+### Services
+
+* Create 2 ECS services using the above task definitions
+* Each service should run in the same VPC/Subnet
+* Use a security group that allows traffic on ports 8081 and 8082
+* No ALB needed — each service will receive a public IP
+
+---
+
+## 🔗 Test the Flow
+
+1. Get public IP of `employee-management-service` from ECS console.
+2. Use curl or Postman to hit the create employee endpoint:
+
+```bash
+curl -X POST http://<EMPLOYEE_PUBLIC_IP>:8081/api/employees \
+  -H "Content-Type: application/json" \
+  -d '{
+    "firstName": "Sourabh",
+    "lastName": "Khot",
+    "email": "sourabh@example.com"
+}'
+```
+
+3. This should trigger a notification sent to `notification-service`.
+
+4. Check CloudWatch logs for `notification-service`, you should see:
+
+```
+🔔 Notification received: Employee Created for Employee ID: 1
+```
+
+---
+
+## ✅ Summary
+
+| Component            | Description                        |
+| -------------------- | ---------------------------------- |
+| employee-service     | Spring Boot app on port 8081       |
+| notification-service | Spring Boot app on port 8082       |
+| Inter-service comm   | HTTP using public IPs              |
+| Dockerized           | Yes (Dockerfile in each service)   |
+| Fargate ready        | Yes (stateless, env-configurable)  |
+| Load Balancer        | ❌ Not used (public IPs only)       |
+| Infrastructure       | AWS ECS Fargate + ECR + VPC/Subnet |
+
+---
+
+## 🚀 Next Steps (Optional Enhancements)
+
+* Use **Spring Cloud OpenFeign** instead of `RestTemplate`
+* Add **Swagger/OpenAPI** documentation
+* Integrate with **AWS Cloud Map** for service discovery
+* Replace HTTP with **SQS or Kafka** for async messaging
+* Add a **CI/CD pipeline** to push images and deploy automatically
