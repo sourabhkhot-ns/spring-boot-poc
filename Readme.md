@@ -134,13 +134,19 @@ ENTRYPOINT ["java", "-jar", "/app.jar"]
 ### Build & Run Locally
 
 ```bash
+# Clone the repository
+git clone https://github.com/sourabhkhot-ns/spring-boot-poc.git
+
+# Navigate to the project directory
+cd spring-boot-poc
+
 # Package the app
 ./mvnw clean package -DskipTests
 
 # Build Docker image
 # (do this in each service directory)
-docker build -t employee-management-service .
-docker build -t notification-service .
+docker build -t employee-management-service employee-management-service/
+docker build -t notification-service notification-service/
 
 # Run with environment variable
 # (run in separate terminals)
