@@ -3,10 +3,8 @@ package com.example.employee_management_service.service;
 import com.example.employee_management_service.model.Employee;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
 
 import java.io.File;
 import java.io.IOException;
@@ -21,13 +19,9 @@ public class EmployeeServiceImpl implements EmployeeService {
     private static final Logger logger = LoggerFactory.getLogger(EmployeeServiceImpl.class);
     private static final String EMPLOYEE_FILE = "employees.json";
     private final ObjectMapper objectMapper = new ObjectMapper();
-    private final RestTemplate restTemplate = new RestTemplate();
 
     @Autowired
     private NotificationClient notificationClient;
-
-    @Value("${NOTIFICATION_URL:http://localhost:8080}")
-    private String notificationUrl;
 
     private List<Employee> readEmployees() {
         try {
