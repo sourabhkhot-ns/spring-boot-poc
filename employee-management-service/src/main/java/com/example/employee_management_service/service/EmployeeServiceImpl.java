@@ -13,9 +13,12 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Service
 public class EmployeeServiceImpl implements EmployeeService {
+    private static final Logger logger = LoggerFactory.getLogger(EmployeeServiceImpl.class);
     private static final String EMPLOYEE_FILE = "employees.json";
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final RestTemplate restTemplate = new RestTemplate();
@@ -32,6 +35,7 @@ public class EmployeeServiceImpl implements EmployeeService {
             if (!file.exists()) return new ArrayList<>();
             return objectMapper.readValue(file, new TypeReference<List<Employee>>() {});
         } catch (IOException e) {
+            logger.error("Failed to read employees from file", e);
             throw new RuntimeException(e);
         }
     }
@@ -40,6 +44,7 @@ public class EmployeeServiceImpl implements EmployeeService {
         try {
             objectMapper.writerWithDefaultPrettyPrinter().writeValue(new File(EMPLOYEE_FILE), employees);
         } catch (IOException e) {
+            logger.error("Failed to write employees to file", e);
             throw new RuntimeException(e);
         }
     }
@@ -51,17 +56,20 @@ public class EmployeeServiceImpl implements EmployeeService {
         employee.setId(newId);
         employees.add(employee);
         writeEmployees(employees);
+        logger.info("Employee created: {} {} (ID: {})", employee.getFirstName(), employee.getLastName(), employee.getId());
         notificationClient.sendNotification("Employee Created", employee.getId());
         return employee;
     }
 
     @Override
     public List<Employee> getAllEmployees() {
+        logger.info("Returning all employees");
         return readEmployees();
     }
 
     @Override
     public Employee getEmployeeById(Long id) {
+        logger.info("Getting employee by id: {}", id);
         return readEmployees().stream().filter(e -> e.getId().equals(id)).findFirst().orElse(null);
     }
 
@@ -75,9 +83,11 @@ public class EmployeeServiceImpl implements EmployeeService {
             emp.setLastName(updated.getLastName());
             emp.setEmail(updated.getEmail());
             writeEmployees(employees);
+            logger.info("Employee updated: {} (ID: {})", emp.getFirstName(), id);
             notificationClient.sendNotification("Employee Updated", id);
             return emp;
         }
+        logger.warn("Employee not found for update: id {}", id);
         return null;
     }
 
@@ -86,6 +96,11 @@ public class EmployeeServiceImpl implements EmployeeService {
         List<Employee> employees = readEmployees();
         boolean removed = employees.removeIf(e -> e.getId().equals(id));
         writeEmployees(employees);
-        if (removed) notificationClient.sendNotification("Employee Deleted", id);
+        if (removed) {
+            logger.info("Employee deleted: id {}", id);
+            notificationClient.sendNotification("Employee Deleted", id);
+        } else {
+            logger.warn("Employee not found for delete: id {}", id);
+        }
     }
 } 

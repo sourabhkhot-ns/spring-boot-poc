@@ -29,6 +29,7 @@ public class NotificationController {
 
     @GetMapping
     public List<NotificationRequest> getAllNotifications() {
+        logger.info("Fetching all notifications");
         return readNotifications();
     }
 
@@ -36,8 +37,11 @@ public class NotificationController {
         try {
             File file = new File(NOTIF_FILE);
             if (!file.exists()) return new ArrayList<>();
-            return objectMapper.readValue(file, new TypeReference<List<NotificationRequest>>() {});
+            List<NotificationRequest> notifications = objectMapper.readValue(file, new TypeReference<List<NotificationRequest>>() {});
+            logger.debug("Read {} notifications from file", notifications.size());
+            return notifications;
         } catch (IOException e) {
+            logger.error("Failed to read notifications from file", e);
             throw new RuntimeException(e);
         }
     }
@@ -45,7 +49,9 @@ public class NotificationController {
     private void writeNotifications(List<NotificationRequest> notifications) {
         try {
             objectMapper.writerWithDefaultPrettyPrinter().writeValue(new File(NOTIF_FILE), notifications);
+            logger.debug("Wrote {} notifications to file", notifications.size());
         } catch (IOException e) {
+            logger.error("Failed to write notifications to file", e);
             throw new RuntimeException(e);
         }
     }
