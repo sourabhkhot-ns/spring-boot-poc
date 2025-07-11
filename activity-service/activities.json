@@ -1,0 +1,19 @@
+[ {
+  "timestamp" : "2025-07-11T07:44:37.755604492Z",
+  "service" : "notification-service",
+  "type" : "Employee Created",
+  "details" : {
+    "message" : "Employee Created",
+    "employeeId" : 6
+  }
+}, {
+  "timestamp" : "2025-07-11T07:44:37.940283249Z",
+  "service" : "employee-management-service",
+  "type" : "Employee Created",
+  "details" : {
+    "id" : 6,
+    "firstName" : "Sourabh",
+    "lastName" : "Khot",
+    "email" : "sourabh@example.com"
+  }
+} ]
