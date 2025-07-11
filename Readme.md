@@ -1,9 +1,10 @@
 # 🧪 Employee Notification Microservices POC
 
-This project is a **proof-of-concept (POC)** microservices setup using **Spring Boot**, featuring two independent services:
+This project is a **proof-of-concept (POC)** microservices setup using **Spring Boot**, featuring three independent services:
 
 - `employee-management-service`: Handles employee operations, stores employees in a JSON file, and notifies on changes.
 - `notification-service`: Receives, logs, and stores notifications in a JSON file via HTTP.
+- `activity-service`: Receives, logs, and stores all activity events from other services in a JSON file.
 
 These services are designed to be **containerized with Docker** and **deployed to AWS ECS Fargate** without a load balancer (public IPs are used for inter-service communication).
 
@@ -21,6 +22,10 @@ employee-notification-poc/
 │   ├── Dockerfile
 │   ├── pom.xml
 │   └── src/main/java/com/example/notification/...
+├── activity-service/
+│   ├── Dockerfile
+│   ├── pom.xml
+│   └── src/main/java/com/example/activity/...
 └── README.md
 ```
 
@@ -44,6 +49,7 @@ employee-notification-poc/
 - Create, read, update, and delete employee records
 - Store employees in a local `employees.json` file
 - Notify `notification-service` via HTTP POST when an employee is created, updated, or deleted
+- Send activity events to `activity-service` for all employee changes
 
 ### 📦 REST Endpoints
 
@@ -87,6 +93,7 @@ The `NOTIFICATION_URL` must be provided via an **environment variable**.
 
 * Accept, log, and store incoming notifications
 * Expose a GET endpoint to retrieve all notifications
+* Send activity events to `activity-service` for all received notifications
 
 ### 📦 REST Endpoints
 
@@ -121,9 +128,61 @@ The `NOTIFICATION_URL` must be provided via an **environment variable**.
 
 ---
 
+## 📝 activity-service
+
+### ➕ Responsibilities
+
+* Accept, log, and store all activity events from other services
+* Expose a GET endpoint to retrieve all activities
+
+### 📦 REST Endpoints
+
+| Method | Endpoint           | Description                |
+| ------ | ------------------ | -------------------------- |
+| POST   | `/api/activities`  | Accept and store an activity|
+| GET    | `/api/activities`  | Get all stored activities  |
+
+### 📄 Request Format (POST)
+
+```json
+{
+  "timestamp": "2024-07-10T12:34:56Z",
+  "service": "employee-management-service",
+  "type": "Employee Created",
+  "details": {
+    "employeeId": 1,
+    "firstName": "Sourabh"
+  }
+}
+```
+
+### 📄 Response Format (GET)
+
+```json
+[
+  {
+    "timestamp": "2024-07-10T12:34:56Z",
+    "service": "employee-management-service",
+    "type": "Employee Created",
+    "details": {
+      "employeeId": 1,
+      "firstName": "Sourabh"
+    }
+  }
+]
+```
+
+### 🗃 Storage
+- Activities are stored in a local `activities.json` file (no database is used).
+
+### 📝 Logging
+- All received activities, file operations, and errors are logged using SLF4J.
+
+---
+
 ## 🐳 Docker Setup
 
-### Dockerfile (common to both services)
+### Dockerfile (common to all services)
 
 ```dockerfile
 FROM openjdk:17-jdk-slim
@@ -134,21 +193,23 @@ ENTRYPOINT ["java", "-jar", "/app.jar"]
 ### Build & Run Locally
 
 ```bash
-# Clone the repository
-git clone https://github.com/sourabhkhot-ns/spring-boot-poc.git
+# Package the app
+./mvnw clean package -DskipTests
 
-# Navigate to the project directory
-cd spring-boot-poc
-
-# Build Docker image for each service
-docker build -t employee-management-service employee-management-service/
-docker build -t notification-service notification-service/
+# Build Docker image
+# (do this in each service directory)
+docker build -t employee-management-service .
+docker build -t notification-service .
+docker build -t activity-service .
 
 # Run with environment variable
-docker run -e NOTIFICATION_URL=http://<host-ip>:8082 \
+# (run in separate terminals)
+docker run -e NOTIFICATION_URL=http://<host-ip>:8082 -e ACTIVITY_URL=http://<host-ip>:8083 \
   -p 8081:8081 employee-management-service
 
-docker run -p 8082:8080 notification-service
+docker run -e ACTIVITY_URL=http://<host-ip>:8083 -p 8082:8080 notification-service
+
+docker run -p 8083:8080 activity-service
 ```
 
 ---
@@ -160,6 +221,7 @@ docker run -p 8082:8080 notification-service
 ```bash
 aws ecr create-repository --repository-name employee-management-service
 aws ecr create-repository --repository-name notification-service
+aws ecr create-repository --repository-name activity-service
 ```
 
 ### 2. Push Docker Images
@@ -175,6 +237,9 @@ docker push <ACCOUNT_ID>.dkr.ecr.<region>.amazonaws.com/employee-management-serv
 
 docker tag notification-service:latest <ACCOUNT_ID>.dkr.ecr.<region>.amazonaws.com/notification-service
 docker push <ACCOUNT_ID>.dkr.ecr.<region>.amazonaws.com/notification-service
+
+docker tag activity-service:latest <ACCOUNT_ID>.dkr.ecr.<region>.amazonaws.com/activity-service
+docker push <ACCOUNT_ID>.dkr.ecr.<region>.amazonaws.com/activity-service
 ```
 
 ---
@@ -186,22 +251,22 @@ docker push <ACCOUNT_ID>.dkr.ecr.<region>.amazonaws.com/notification-service
 * `networkMode`: `awsvpc`
 * `requiresCompatibilities`: `["FARGATE"]`
 * CPU: `256`, Memory: `512`
-* Port mappings: `8081` (employee), `8082` (notification)
+* Port mappings: `8081` (employee), `8082` (notification), `8083` (activity)
 * Enable `assignPublicIp: ENABLED`
-* Add `NOTIFICATION_URL` as environment variable in employee task
+* Add `NOTIFICATION_URL` and `ACTIVITY_URL` as environment variables in employee and notification tasks
 
 ### Services
 
-* Create 2 ECS services using the above task definitions
+* Create 3 ECS services using the above task definitions
 * Each service should run in the same VPC/Subnet
-* Use a security group that allows traffic on ports 8081 and 8082
+* Use a security group that allows traffic on ports 8081, 8082, and 8083
 * No ALB needed — each service will receive a public IP
 
 ---
 
 ## 🔗 Test the Flow
 
-1. Get public IP of `employee-management-service` from ECS console.
+1. Get public IPs of all services from ECS console.
 2. Use curl or Postman to hit the create employee endpoint:
 
 ```bash
@@ -214,7 +279,7 @@ curl -X POST http://<EMPLOYEE_PUBLIC_IP>:8081/api/employees \
 }'
 ```
 
-3. This should trigger a notification sent to `notification-service`.
+3. This should trigger a notification sent to `notification-service` and activity events sent to `activity-service`.
 
 4. To view all notifications:
 
@@ -222,7 +287,13 @@ curl -X POST http://<EMPLOYEE_PUBLIC_IP>:8081/api/employees \
 curl http://<NOTIFICATION_PUBLIC_IP>:8082/api/notifications
 ```
 
-5. Check logs for both services for detailed action and error logs.
+5. To view all activities:
+
+```bash
+curl http://<ACTIVITY_PUBLIC_IP>:8083/api/activities
+```
+
+6. Check logs for all services for detailed action and error logs.
 
 ---
 
@@ -230,8 +301,9 @@ curl http://<NOTIFICATION_PUBLIC_IP>:8082/api/notifications
 
 | Component            | Description                        |
 | -------------------- | ---------------------------------- |
-| employee-service     | Spring Boot app on port 8081, stores employees in JSON |
-| notification-service | Spring Boot app on port 8082, stores notifications in JSON |
+| employee-service     | Spring Boot app on port 8081, stores employees in JSON, sends notifications and activities |
+| notification-service | Spring Boot app on port 8082, stores notifications in JSON, sends activities |
+| activity-service     | Spring Boot app on port 8083, stores activities in JSON |
 | Inter-service comm   | HTTP using public IPs              |
 | Dockerized           | Yes (Dockerfile in each service)   |
 | Fargate ready        | Yes (stateless, env-configurable)  |
