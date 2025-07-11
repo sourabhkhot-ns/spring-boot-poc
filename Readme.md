@@ -207,9 +207,9 @@ docker build -t activity-service .
 docker run -e NOTIFICATION_URL=http://<host-ip>:8082 -e ACTIVITY_URL=http://<host-ip>:8083 \
   -p 8081:8081 employee-management-service
 
-docker run -e ACTIVITY_URL=http://<host-ip>:8083 -p 8082:8080 notification-service
+docker run -e ACTIVITY_URL=http://<host-ip>:8083 -p 8082:8082 notification-service
 
-docker run -p 8083:8080 activity-service
+docker run -p 8083:8083 activity-service
 ```
 
 ---
