@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.example.employee_management_service.service.ActivityClient;
 
 @Service
 public class EmployeeServiceImpl implements EmployeeService {
@@ -22,6 +23,9 @@ public class EmployeeServiceImpl implements EmployeeService {
 
     @Autowired
     private NotificationClient notificationClient;
+
+    @Autowired
+    private ActivityClient activityClient;
 
     private List<Employee> readEmployees() {
         try {
@@ -52,6 +56,7 @@ public class EmployeeServiceImpl implements EmployeeService {
         writeEmployees(employees);
         logger.info("Employee created: {} {} (ID: {})", employee.getFirstName(), employee.getLastName(), employee.getId());
         notificationClient.sendNotification("Employee Created", employee.getId());
+        activityClient.sendActivity("Employee Created", employee);
         return employee;
     }
 
@@ -79,6 +84,7 @@ public class EmployeeServiceImpl implements EmployeeService {
             writeEmployees(employees);
             logger.info("Employee updated: {} (ID: {})", emp.getFirstName(), id);
             notificationClient.sendNotification("Employee Updated", id);
+            activityClient.sendActivity("Employee Updated", emp);
             return emp;
         }
         logger.warn("Employee not found for update: id {}", id);
@@ -93,6 +99,7 @@ public class EmployeeServiceImpl implements EmployeeService {
         if (removed) {
             logger.info("Employee deleted: id {}", id);
             notificationClient.sendNotification("Employee Deleted", id);
+            activityClient.sendActivity("Employee Deleted", id);
         } else {
             logger.warn("Employee not found for delete: id {}", id);
         }

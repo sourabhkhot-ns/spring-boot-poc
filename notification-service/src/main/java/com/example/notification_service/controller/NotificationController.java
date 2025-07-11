@@ -11,6 +11,8 @@ import java.util.ArrayList;
 import java.util.List;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Autowired;
+import com.example.notification_service.service.ActivityClient;
 
 @RestController
 @RequestMapping("/api/notifications")
@@ -19,12 +21,16 @@ public class NotificationController {
     private static final String NOTIF_FILE = "notifications.json";
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+    @Autowired
+    private ActivityClient activityClient;
+
     @PostMapping
     public void receiveNotification(@RequestBody NotificationRequest notification) {
         logger.info("\uD83D\uDD14 Notification received: {} for Employee ID: {}", notification.getMessage(), notification.getEmployeeId());
         List<NotificationRequest> notifications = readNotifications();
         notifications.add(notification);
         writeNotifications(notifications);
+        activityClient.sendActivity(notification.getMessage(), notification);
     }
 
     @GetMapping
