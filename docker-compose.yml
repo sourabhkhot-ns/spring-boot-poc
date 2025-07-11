@@ -1,0 +1,29 @@
+version: '3.8'
+services:
+  activity-service:
+    build: ./activity-service
+    container_name: activity-service
+    ports:
+      - "8083:8083"
+
+  notification-service:
+    build: ./notification-service
+    container_name: notification-service
+    ports:
+      - "8082:8082"
+    environment:
+      - ACTIVITY_URL=http://activity-service:8083
+    depends_on:
+      - activity-service
+
+  employee-management-service:
+    build: ./employee-management-service
+    container_name: employee-management-service
+    ports:
+      - "8081:8081"
+    environment:
+      - NOTIFICATION_URL=http://notification-service:8082
+      - ACTIVITY_URL=http://activity-service:8083
+    depends_on:
+      - notification-service
+      - activity-service 

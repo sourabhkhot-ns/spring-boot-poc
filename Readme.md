@@ -180,17 +180,31 @@ The `NOTIFICATION_URL` must be provided via an **environment variable**.
 
 ---
 
-## 🐳 Docker Setup
+## 🐳 Docker & Docker Compose Setup
 
-### Dockerfile (common to all services)
+### Docker Compose (Recommended)
 
-```dockerfile
-FROM openjdk:17-jdk-slim
-COPY target/*.jar app.jar
-ENTRYPOINT ["java", "-jar", "/app.jar"]
+To build and run all services together:
+
+```bash
+docker-compose up --build
 ```
 
-### Build & Run Locally
+- This will build all three services and start them on ports 8081 (employee), 8082 (notification), and 8083 (activity).
+- Inter-service URLs are set automatically via environment variables.
+- You can access the APIs at:
+  - Employee: http://localhost:8081/api/employees
+  - Notification: http://localhost:8082/api/notifications
+  - Activity: http://localhost:8083/api/activities
+
+To stop all services:
+```bash
+docker-compose down
+```
+
+### Manual Docker Build & Run (Advanced)
+
+You can still build and run each service manually as described below:
 
 ```bash
 # Package the app
