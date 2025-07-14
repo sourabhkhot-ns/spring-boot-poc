@@ -5,6 +5,12 @@ services:
     container_name: activity-service
     ports:
       - "8083:8083"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8083/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
   notification-service:
     build: ./notification-service
@@ -15,6 +21,12 @@ services:
       - ACTIVITY_URL=http://activity-service:8083
     depends_on:
       - activity-service
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8082/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
   employee-management-service:
     build: ./employee-management-service
@@ -26,4 +38,10 @@ services:
       - ACTIVITY_URL=http://activity-service:8083
     depends_on:
       - notification-service
-      - activity-service 
+      - activity-service
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s 

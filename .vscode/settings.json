@@ -4,5 +4,6 @@
     "notification-service/src/main/java",
     "activity-service/src/main/java"
   ],
-  "java.configuration.updateBuildConfiguration": "interactive"
+  "java.configuration.updateBuildConfiguration": "interactive",
+  "java.compile.nullAnalysis.mode": "automatic"
 } 

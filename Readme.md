@@ -60,6 +60,7 @@ employee-notification-poc/
 | GET    | `/api/employees/{id}`  | Get employee by ID      |
 | PUT    | `/api/employees/{id}`  | Update employee by ID   |
 | DELETE | `/api/employees/{id}`  | Delete employee by ID   |
+| GET    | `/api/health`          | Healthcheck endpoint    |
 
 ### 🔔 Notification Call
 
@@ -101,6 +102,7 @@ The `NOTIFICATION_URL` must be provided via an **environment variable**.
 | ------ | -------------------- | ------------------------------ |
 | POST   | `/api/notifications` | Accept and store a notification|
 | GET    | `/api/notifications` | Get all stored notifications   |
+| GET    | `/api/health`        | Healthcheck endpoint           |
 
 ### 📄 Request Format (POST)
 
@@ -141,6 +143,7 @@ The `NOTIFICATION_URL` must be provided via an **environment variable**.
 | ------ | ------------------ | -------------------------- |
 | POST   | `/api/activities`  | Accept and store an activity|
 | GET    | `/api/activities`  | Get all stored activities  |
+| GET    | `/api/health`      | Healthcheck endpoint       |
 
 ### 📄 Request Format (POST)
 
@@ -226,6 +229,22 @@ docker run -e NOTIFICATION_URL=http://<host-ip>:8082 -e ACTIVITY_URL=http://<hos
 docker run -e ACTIVITY_URL=http://<host-ip>:8083 -p 8082:8082 notification-service
 
 docker run -p 8083:8083 activity-service
+```
+
+#### Healthchecks
+
+Each service exposes a `/api/health` endpoint for health monitoring. Docker Compose is configured to use these endpoints for container healthchecks:
+
+- Employee: http://localhost:8081/api/health
+- Notification: http://localhost:8082/api/health
+- Activity: http://localhost:8083/api/health
+
+You can check the health of each service by visiting the respective endpoint in your browser or using `curl`:
+
+```bash
+curl http://localhost:8081/api/health
+curl http://localhost:8082/api/health
+curl http://localhost:8083/api/health
 ```
 
 ---
