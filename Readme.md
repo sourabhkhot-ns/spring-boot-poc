@@ -33,7 +33,7 @@ employee-notification-poc/
 
 ## 🧰 Technologies Used
 
-- Java 17
+- Java 21 (Eclipse Temurin, used in Dockerfiles)
 - Spring Boot 3+
 - Maven
 - Docker
@@ -190,7 +190,7 @@ To build and run all services together:
 docker-compose up --build
 ```
 
-- This will build all three services and start them on ports 8081 (employee), 8082 (notification), and 8083 (activity).
+- This will build all three services using Java 21 images and start them on ports 8081 (employee), 8082 (notification), and 8083 (activity).
 - Inter-service URLs are set automatically via environment variables.
 - You can access the APIs at:
   - Employee: http://localhost:8081/api/employees
@@ -203,6 +203,8 @@ docker-compose down
 ```
 
 ### Manual Docker Build & Run (Advanced)
+
+All Dockerfiles use Java 21 (Eclipse Temurin) for both build and runtime images.
 
 You can still build and run each service manually as described below:
 
