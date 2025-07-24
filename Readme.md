@@ -231,7 +231,63 @@ docker run -e ACTIVITY_URL=http://<host-ip>:8083 -p 8082:8082 notification-servi
 docker run -p 8083:8083 activity-service
 ```
 
-#### Healthchecks
+### Local Setup
+
+To run the services locally, you can use the following command:
+```bash
+docker-compose up
+```
+
+To stop the services, you can use the following command:
+```bash
+docker-compose down
+```
+
+To access the services, you can use the following URLs:
+
+- Employee: http://localhost:8081/api/employees
+- Notification: http://localhost:8082/api/notifications
+- Activity: http://localhost:8083/api/activities
+
+To check the health of the services, you can use the following endpoints:
+- Employee: http://localhost:8081/api/health
+- Notification: http://localhost:8082/api/health
+- Activity: http://localhost:8083/api/health
+
+To check the logs of the services, you can use the following command:
+```bash
+docker-compose logs -f <service-name>
+```
+
+Create a new employee:
+```bash
+curl -X POST http://localhost:8081/api/employees \
+  -H "Content-Type: application/json" \
+  -d '{
+    "firstName": "Sourabh",
+    "lastName": "Khot",
+    "email": "sourabh@example.com"
+  }'
+```
+
+To update the employee, you can use the following endpoint:
+```bash
+curl -X PUT http://localhost:8081/api/employees/1 \
+  -H "Content-Type: application/json" \
+  -d '{
+    "firstName": "Sourabh",
+    "lastName": "Khot", 
+    "email": "sourabh@example.com"
+  }'
+```
+
+To delete the employee, you can use the following endpoint:
+
+To view the notifications, you can use the following endpoint:
+```bash
+curl http://localhost:8082/api/notifications
+```
+### Healthchecks
 
 Each service exposes a `/api/health` endpoint for health monitoring. Docker Compose is configured to use these endpoints for container healthchecks:
 
